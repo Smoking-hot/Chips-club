@@ -1,4 +1,6 @@
 import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
+import { randomBytes } from "crypto";
 
 function generateInviteCode(length = 8) {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -11,10 +13,61 @@ function generateInviteCode(length = 8) {
 
 const prisma = new PrismaClient();
 
-async function main() {
-  const existingUsers = await prisma.user.count();
-  if (existingUsers > 0) {
-    console.log("Users already exist — skipping bootstrap invite creation.");
+// System account that owns imported catalogue data (not meant for login).
+const CATALOGUE_USER_EMAIL = "catalogue@chipsklubben.local";
+const CATALOGUE_USER_NAME = "Chipsklubben katalog";
+
+// Product names as listed on https://www.estrella.se/produktfamiljer/chips/
+const ESTRELLA_CHIPS: { name: string; brand: string; country: string }[] = [
+  { name: "Hot Honey Cheese & Mild Jalapeno", brand: "Estrella", country: "Sweden" },
+  { name: "Cream Cheese & Onion", brand: "Estrella", country: "Sweden" },
+  { name: "Paprika & Havssalt", brand: "Estrella", country: "Sweden" },
+  { name: "Ugnsbakade Chips Brynt Smör & Chili", brand: "Estrella", country: "Sweden" },
+  { name: "Vickningschips Saltade", brand: "Estrella", country: "Sweden" },
+  { name: "Potatischips Salt & Vinegar", brand: "Estrella", country: "Sweden" },
+  { name: "Ranch & Sourcream", brand: "Estrella", country: "Sweden" },
+  { name: "Pepparchips", brand: "Estrella", country: "Sweden" },
+  { name: "Sourcream & Onion", brand: "Estrella", country: "Sweden" },
+  { name: "Dillchips", brand: "Estrella", country: "Sweden" },
+  { name: "Grillchips", brand: "Estrella", country: "Sweden" },
+];
+
+async function ensureCatalogueUser() {
+  const existing = await prisma.user.findUnique({
+    where: { email: CATALOGUE_USER_EMAIL },
+  });
+  if (existing) return existing;
+
+  const passwordHash = await bcrypt.hash(randomBytes(24).toString("hex"), 10);
+  return prisma.user.create({
+    data: {
+      name: CATALOGUE_USER_NAME,
+      email: CATALOGUE_USER_EMAIL,
+      passwordHash,
+    },
+  });
+}
+
+async function seedEstrellaChips() {
+  const catalogueUser = await ensureCatalogueUser();
+
+  for (const chip of ESTRELLA_CHIPS) {
+    await prisma.crisp.upsert({
+      where: { name_brand: { name: chip.name, brand: chip.brand } },
+      create: { ...chip, createdById: catalogueUser.id },
+      update: { country: chip.country },
+    });
+  }
+
+  console.log(`Seeded ${ESTRELLA_CHIPS.length} Estrella crisps into the listing.`);
+}
+
+async function seedBootstrapInvite() {
+  const realMemberCount = await prisma.user.count({
+    where: { email: { not: CATALOGUE_USER_EMAIL } },
+  });
+  if (realMemberCount > 0) {
+    console.log("Members already exist — skipping bootstrap invite creation.");
     return;
   }
 
@@ -32,6 +85,11 @@ async function main() {
   console.log("\nCreated a bootstrap invite code for the first member:\n");
   console.log(`  ${code}\n`);
   console.log(`Register at /register?code=${code}\n`);
+}
+
+async function main() {
+  await seedEstrellaChips();
+  await seedBootstrapInvite();
 }
 
 main()
