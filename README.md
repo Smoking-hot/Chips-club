@@ -8,16 +8,21 @@ to a crisp someone else added never overwrites theirs.
 ## Stack
 
 - [Next.js](https://nextjs.org) (App Router, Server Actions) + TypeScript + Tailwind CSS
-- [Prisma](https://www.prisma.io) with SQLite for storage
+- [Prisma](https://www.prisma.io) with Postgres for storage
 - Custom invite-only auth: password login with `bcryptjs`, signed session cookies via `jose`
 
 ## Getting started
 
+You need a Postgres database to develop against — the easiest options are a
+free [Neon](https://neon.tech) or [Vercel Postgres](https://vercel.com/storage/postgres)
+database (or point `DATABASE_URL` at the same database your Vercel deployment
+uses).
+
 ```bash
 npm install
-cp .env.example .env   # then set a real SESSION_SECRET
-npm run db:push        # creates prisma/dev.db from the schema
-npm run db:seed        # prints a one-time invite code for the first member
+cp .env.example .env   # set DATABASE_URL to your Postgres connection string, and a real SESSION_SECRET
+npm run db:push        # syncs prisma/schema.prisma to the database
+npm run db:seed        # prints a one-time invite code and seeds sample crisps
 npm run dev
 ```
 
@@ -44,15 +49,27 @@ seed script printed to create the first account. Once logged in, visit
 | ------------------ | ------------------------------------------ |
 | `npm run dev`       | Start the dev server                       |
 | `npm run build`     | Production build                           |
+| `npm run vercel-build` | Build command used on Vercel (schema sync + seed + build) |
 | `npm run start`     | Run the production build                   |
 | `npm run lint`      | Lint the codebase                          |
 | `npm run db:push`   | Sync `prisma/schema.prisma` to the database |
 | `npm run db:seed`   | Create a bootstrap invite code             |
 | `npm run db:studio` | Browse the database in Prisma Studio       |
 
-## Deploying
+## Deploying (Vercel)
 
-The app reads `DATABASE_URL` (a SQLite file path by default) and
-`SESSION_SECRET` from the environment — set real values for both in
-production. SQLite is fine for a small club; swap the Prisma datasource
-provider for Postgres/MySQL if you outgrow it.
+The app reads `DATABASE_URL` and `SESSION_SECRET` from the environment —
+both must be set as real values in your Vercel project's environment
+variables.
+
+Set the project's **Build Command** (Project Settings → Build & Development
+Settings) to:
+
+```
+npm run vercel-build
+```
+
+That script runs `prisma generate`, syncs the schema to `DATABASE_URL` with
+`prisma db push`, runs the (idempotent) seed script, then builds the app —
+so every deploy keeps the database schema and sample data in sync
+automatically, with no manual database commands required.
