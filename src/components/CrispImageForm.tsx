@@ -16,7 +16,6 @@ export default function CrispImageForm({
   return (
     <form
       action={formAction}
-      encType="multipart/form-data"
       className="flex flex-wrap items-center gap-2 text-sm"
     >
       <input type="hidden" name="crispId" value={crispId} />

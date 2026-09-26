@@ -9,7 +9,7 @@ export default function CrispForm() {
   const [state, formAction] = useActionState(createCrispAction, undefined);
 
   return (
-    <form action={formAction} encType="multipart/form-data" className="space-y-4">
+    <form action={formAction} className="space-y-4">
       {state?.error && (
         <p className="rounded-md bg-red-50 text-red-700 px-3 py-2 text-sm">
           {state.error}
