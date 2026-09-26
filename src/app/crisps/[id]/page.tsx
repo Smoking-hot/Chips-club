@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import StarRating from "@/components/StarRating";
 import ReviewForm from "@/components/ReviewForm";
+import CrispImage from "@/components/CrispImage";
+import CrispImageForm from "@/components/CrispImageForm";
 
 export default async function CrispPage({ params }: PageProps<"/crisps/[id]">) {
   const { id } = await params;
@@ -38,27 +40,35 @@ export default async function CrispPage({ params }: PageProps<"/crisps/[id]">) {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold">{crisp.name}</h1>
-        <p className="text-muted mt-1">
-          {crisp.brand} · {crisp.country}
-        </p>
-        <div className="flex items-center gap-2 mt-3">
-          {count > 0 ? (
-            <>
-              <StarRating value={average} />
-              <span className="text-sm text-muted">
-                {average.toFixed(1)} average · {count} review
-                {count === 1 ? "" : "s"}
-              </span>
-            </>
-          ) : (
-            <span className="text-sm text-muted">No reviews yet</span>
+      <div className="flex flex-col sm:flex-row gap-4">
+        <CrispImage src={crisp.imageUrl} alt={crisp.name} size="large" />
+        <div className="min-w-0 flex-1">
+          <h1 className="text-2xl font-bold">{crisp.name}</h1>
+          <p className="text-muted mt-1">
+            {crisp.brand} · {crisp.country}
+          </p>
+          <div className="flex items-center gap-2 mt-3">
+            {count > 0 ? (
+              <>
+                <StarRating value={average} />
+                <span className="text-sm text-muted">
+                  {average.toFixed(1)} average · {count} review
+                  {count === 1 ? "" : "s"}
+                </span>
+              </>
+            ) : (
+              <span className="text-sm text-muted">No reviews yet</span>
+            )}
+          </div>
+          <p className="text-xs text-muted mt-2">
+            Added by {crisp.createdBy.name}
+          </p>
+          {user && (
+            <div className="mt-3">
+              <CrispImageForm crispId={crisp.id} hasImage={Boolean(crisp.imageUrl)} />
+            </div>
           )}
         </div>
-        <p className="text-xs text-muted mt-2">
-          Added by {crisp.createdBy.name}
-        </p>
       </div>
 
       <section className="rounded-lg border border-card-border bg-card p-4">

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import StarRating from "@/components/StarRating";
+import CrispImage from "@/components/CrispImage";
 
 export default async function HomePage({
   searchParams,
@@ -73,21 +74,24 @@ export default async function HomePage({
               <li key={crisp.id}>
                 <Link
                   href={`/crisps/${crisp.id}`}
-                  className="block h-full rounded-lg border border-card-border bg-card p-4 hover:border-brand transition-colors"
+                  className="flex h-full gap-3 rounded-lg border border-card-border bg-card p-4 hover:border-brand transition-colors"
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <h2 className="font-semibold">{crisp.name}</h2>
-                      <p className="text-sm text-muted">
-                        {crisp.brand} · {crisp.country}
-                      </p>
+                  <CrispImage src={crisp.imageUrl} alt={crisp.name} size="thumb" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <h2 className="font-semibold truncate">{crisp.name}</h2>
+                        <p className="text-sm text-muted">
+                          {crisp.brand} · {crisp.country}
+                        </p>
+                      </div>
+                      {count > 0 && <StarRating value={average} size="sm" />}
                     </div>
-                    {count > 0 && <StarRating value={average} size="sm" />}
+                    <p className="text-xs text-muted mt-3">
+                      {count} review{count === 1 ? "" : "s"} · added by{" "}
+                      {crisp.createdBy.name}
+                    </p>
                   </div>
-                  <p className="text-xs text-muted mt-3">
-                    {count} review{count === 1 ? "" : "s"} · added by{" "}
-                    {crisp.createdBy.name}
-                  </p>
                 </Link>
               </li>
             );

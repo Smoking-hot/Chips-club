@@ -42,6 +42,10 @@ seed script printed to create the first account. Once logged in, visit
   rating and tasting notes to a crisp — including ones added by other
   members. Each member has exactly one review per crisp; submitting again
   updates their existing review rather than creating a duplicate.
+- **Photos.** A crisp can have a photo, shown as a thumbnail in the listing
+  and larger on its own page. It's optional when adding a new crisp, and any
+  member can add or replace it later from the crisp's page. Photos are
+  stored in [Vercel Blob](https://vercel.com/storage/blob).
 
 ## Useful scripts
 
@@ -58,9 +62,13 @@ seed script printed to create the first account. Once logged in, visit
 
 ## Deploying (Vercel)
 
-The app reads `DATABASE_URL` and `SESSION_SECRET` from the environment —
-both must be set as real values in your Vercel project's environment
-variables.
+The app reads `DATABASE_URL`, `SESSION_SECRET` and `BLOB_READ_WRITE_TOKEN`
+from the environment — all three must be set as real values in your Vercel
+project's environment variables. `BLOB_READ_WRITE_TOKEN` is set automatically
+once you connect a [Vercel Blob](https://vercel.com/storage/blob) store to
+the project (Storage → Create Database → Blob → Connect). Without it, crisp
+photo uploads fail with a friendly error but the rest of the app keeps
+working.
 
 Set the project's **Build Command** (Project Settings → Build & Development
 Settings) to:

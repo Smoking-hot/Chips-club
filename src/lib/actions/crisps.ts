@@ -5,7 +5,13 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
+import { CrispImageError, deleteCrispImage, uploadCrispImage } from "@/lib/crisp-image";
 import type { ActionState } from "@/lib/actions/auth";
+
+function getOptionalImage(formData: FormData): File | null {
+  const file = formData.get("image");
+  return file instanceof File && file.size > 0 ? file : null;
+}
 
 const crispSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(120),
@@ -45,11 +51,25 @@ export async function createCrispAction(
     return { error: "That crisp is already in the listing — add your own review to it instead" };
   }
 
+  const image = getOptionalImage(formData);
+  let imageUrl: string | undefined;
+  if (image) {
+    try {
+      imageUrl = await uploadCrispImage(image);
+    } catch (error) {
+      if (error instanceof CrispImageError) {
+        return { error: error.message };
+      }
+      throw error;
+    }
+  }
+
   const crisp = await prisma.crisp.create({
     data: {
       name,
       brand,
       country,
+      imageUrl,
       createdById: user.id,
       reviews: {
         create: {
@@ -63,6 +83,51 @@ export async function createCrispAction(
 
   revalidatePath("/");
   redirect(`/crisps/${crisp.id}`);
+}
+
+export async function setCrispImageAction(
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { error: "You must be signed in to add a photo" };
+  }
+
+  const crispId = formData.get("crispId");
+  if (typeof crispId !== "string" || !crispId) {
+    return { error: "Invalid crisp" };
+  }
+
+  const image = getOptionalImage(formData);
+  if (!image) {
+    return { error: "Choose an image first" };
+  }
+
+  const crisp = await prisma.crisp.findUnique({ where: { id: crispId } });
+  if (!crisp) {
+    return { error: "That crisp no longer exists" };
+  }
+
+  let imageUrl: string;
+  try {
+    imageUrl = await uploadCrispImage(image);
+  } catch (error) {
+    if (error instanceof CrispImageError) {
+      return { error: error.message };
+    }
+    throw error;
+  }
+
+  await prisma.crisp.update({ where: { id: crispId }, data: { imageUrl } });
+
+  if (crisp.imageUrl) {
+    await deleteCrispImage(crisp.imageUrl);
+  }
+
+  revalidatePath(`/crisps/${crispId}`);
+  revalidatePath("/");
+  return {};
 }
 
 const reviewSchema = z.object({

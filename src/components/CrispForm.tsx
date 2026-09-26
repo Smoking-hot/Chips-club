@@ -9,7 +9,7 @@ export default function CrispForm() {
   const [state, formAction] = useActionState(createCrispAction, undefined);
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form action={formAction} encType="multipart/form-data" className="space-y-4">
       {state?.error && (
         <p className="rounded-md bg-red-50 text-red-700 px-3 py-2 text-sm">
           {state.error}
@@ -55,6 +55,18 @@ export default function CrispForm() {
             className="w-full rounded-md border border-card-border bg-card px-3 py-2"
           />
         </div>
+      </div>
+      <div>
+        <label htmlFor="image" className="block text-sm font-medium mb-1">
+          Photo <span className="text-muted font-normal">(optional)</span>
+        </label>
+        <input
+          id="image"
+          name="image"
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          className="w-full rounded-md border border-card-border bg-card px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-brand-soft file:px-3 file:py-1.5 file:text-sm"
+        />
       </div>
       <div>
         <span className="block text-sm font-medium mb-1">Your rating</span>
