@@ -64,22 +64,31 @@ export async function createCrispAction(
     }
   }
 
-  const crisp = await prisma.crisp.create({
-    data: {
-      name,
-      brand,
-      country,
-      imageUrl,
-      createdById: user.id,
-      reviews: {
-        create: {
-          userId: user.id,
-          rating,
-          tastingNotes,
+  let crisp;
+  try {
+    crisp = await prisma.crisp.create({
+      data: {
+        name,
+        brand,
+        country,
+        imageUrl,
+        createdById: user.id,
+        reviews: {
+          create: {
+            userId: user.id,
+            rating,
+            tastingNotes,
+          },
         },
       },
-    },
-  });
+    });
+  } catch (error) {
+    console.error("Failed to create crisp:", error);
+    if (imageUrl) {
+      await deleteCrispImage(imageUrl);
+    }
+    return { error: "Kunde inte spara chipsen. Försök igen." };
+  }
 
   revalidatePath("/");
   redirect(`/crisps/${crisp.id}`);
@@ -119,7 +128,13 @@ export async function setCrispImageAction(
     throw error;
   }
 
-  await prisma.crisp.update({ where: { id: crispId }, data: { imageUrl } });
+  try {
+    await prisma.crisp.update({ where: { id: crispId }, data: { imageUrl } });
+  } catch (error) {
+    console.error("Failed to save crisp image URL:", error);
+    await deleteCrispImage(imageUrl);
+    return { error: "Bilden laddades upp men kunde inte sparas. Försök igen." };
+  }
 
   if (crisp.imageUrl) {
     await deleteCrispImage(crisp.imageUrl);

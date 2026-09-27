@@ -6,6 +6,11 @@ import ReviewForm from "@/components/ReviewForm";
 import CrispImage from "@/components/CrispImage";
 import CrispImageForm from "@/components/CrispImageForm";
 
+// Photo uploads (via setCrispImageAction/upsertReviewAction on this page) can
+// take a few seconds on a real photo — raise the Server Action timeout above
+// Next.js's default so a normal upload never gets cut off mid-request.
+export const maxDuration = 30;
+
 export default async function CrispPage({ params }: PageProps<"/crisps/[id]">) {
   const { id } = await params;
 

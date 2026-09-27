@@ -2,6 +2,11 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/session";
 import CrispForm from "@/components/CrispForm";
 
+// Photo uploads (via createCrispAction on this page) can take a few seconds
+// on a real photo — raise the Server Action timeout above Next.js's default
+// so a normal upload never gets cut off mid-request.
+export const maxDuration = 30;
+
 export default async function NewCrispPage() {
   const user = await getCurrentUser();
   if (!user) {
