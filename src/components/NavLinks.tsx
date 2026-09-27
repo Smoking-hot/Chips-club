@@ -83,7 +83,7 @@ export default function NavLinks({ user }: { user: NavUser }) {
       {open && (
         <div
           id="mobile-nav"
-          className="sm:hidden absolute inset-x-0 top-full border-b border-card-border bg-card px-4 py-4 flex flex-col gap-3 text-sm shadow-lg"
+          className="sm:hidden absolute inset-x-0 top-full z-50 border-b border-card-border bg-card px-4 py-4 flex flex-col gap-3 text-sm shadow-lg"
         >
           <Link href="/" className={linkClass} onClick={close}>
             Crisps
