@@ -37,7 +37,10 @@ seed script printed to create the first account. Once logged in, visit
   new members.
 - **Shared crisp listing.** Adding a crisp (`/crisps/new`) requires a name,
   brand, country, and your own rating + tasting notes — the crisp appears in
-  the shared listing for everyone from then on.
+  the shared listing for everyone from then on. The name/brand/country can be
+  filled in automatically by scanning the product's barcode, which looks it
+  up on [Open Food Facts](https://world.openfoodfacts.org) — or you can skip
+  scanning and type them in by hand as before.
 - **Per-member reviews.** From a crisp's page, any member can add their own
   rating and tasting notes to a crisp — including ones added by other
   members. Each member has exactly one review per crisp; submitting again

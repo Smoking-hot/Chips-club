@@ -1,12 +1,55 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { createCrispAction } from "@/lib/actions/crisps";
+import { lookupBarcodeAction } from "@/lib/actions/barcode";
 import RatingInput from "@/components/RatingInput";
 import SubmitButton from "@/components/SubmitButton";
+import BarcodeScanner from "@/components/BarcodeScanner";
 
 export default function CrispForm() {
   const [state, formAction] = useActionState(createCrispAction, undefined);
+
+  const [name, setName] = useState("");
+  const [brand, setBrand] = useState("");
+  const [country, setCountry] = useState("");
+
+  const [scanning, setScanning] = useState(false);
+  const [lookingUp, setLookingUp] = useState(false);
+  const [scanStatus, setScanStatus] = useState<
+    { type: "info" | "error"; message: string } | null
+  >(null);
+  const handledCodeRef = useRef<string | null>(null);
+
+  async function handleDetected(code: string) {
+    if (handledCodeRef.current === code) return;
+    handledCodeRef.current = code;
+
+    setScanning(false);
+    setLookingUp(true);
+    setScanStatus(null);
+
+    const result = await lookupBarcodeAction(code);
+    setLookingUp(false);
+
+    if (result.found) {
+      setName(result.name);
+      setBrand(result.brand);
+      if (result.country) setCountry(result.country);
+      setScanStatus({
+        type: "info",
+        message: "Filled in from Open Food Facts — check it over before saving.",
+      });
+    } else {
+      setScanStatus({ type: "error", message: result.error });
+    }
+  }
+
+  function startScanning() {
+    handledCodeRef.current = null;
+    setScanStatus(null);
+    setScanning(true);
+  }
 
   return (
     <form action={formAction} className="space-y-4">
@@ -15,6 +58,48 @@ export default function CrispForm() {
           {state.error}
         </p>
       )}
+
+      {scanning ? (
+        <BarcodeScanner
+          onDetected={handleDetected}
+          onClose={() => setScanning(false)}
+        />
+      ) : (
+        <button
+          type="button"
+          onClick={startScanning}
+          disabled={lookingUp}
+          className="w-full rounded-md border border-card-border bg-brand-soft px-3 py-2 text-sm font-medium hover:opacity-90 disabled:opacity-60"
+        >
+          {lookingUp ? "Looking up barcode…" : "📷 Scan barcode"}
+        </button>
+      )}
+
+      {scanStatus && (
+        <p
+          className={`text-sm px-3 py-2 rounded-md ${
+            scanStatus.type === "error"
+              ? "bg-red-50 text-red-700"
+              : "bg-brand-soft text-foreground"
+          }`}
+        >
+          {scanStatus.message}
+        </p>
+      )}
+
+      <p className="text-xs text-muted">
+        Scanning fills in the fields below using{" "}
+        <a
+          href="https://world.openfoodfacts.org"
+          target="_blank"
+          rel="noreferrer"
+          className="underline"
+        >
+          Open Food Facts
+        </a>
+        , or skip it and fill them in yourself.
+      </p>
+
       <div>
         <label htmlFor="name" className="block text-sm font-medium mb-1">
           Crisp name
@@ -24,6 +109,8 @@ export default function CrispForm() {
           name="name"
           type="text"
           required
+          value={name}
+          onChange={(e) => setName(e.target.value)}
           placeholder="Sea Salt & Cider Vinegar"
           className="w-full rounded-md border border-card-border bg-card px-3 py-2"
         />
@@ -38,6 +125,8 @@ export default function CrispForm() {
             name="brand"
             type="text"
             required
+            value={brand}
+            onChange={(e) => setBrand(e.target.value)}
             placeholder="Estrella"
             className="w-full rounded-md border border-card-border bg-card px-3 py-2"
           />
@@ -51,6 +140,8 @@ export default function CrispForm() {
             name="country"
             type="text"
             required
+            value={country}
+            onChange={(e) => setCountry(e.target.value)}
             placeholder="Sweden"
             className="w-full rounded-md border border-card-border bg-card px-3 py-2"
           />
