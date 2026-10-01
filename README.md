@@ -49,6 +49,9 @@ seed script printed to create the first account. Once logged in, visit
   and larger on its own page. It's optional when adding a new crisp, and any
   member can add or replace it later from the crisp's page. Photos are
   stored in [Vercel Blob](https://vercel.com/storage/blob).
+- **Admins.** Set via the `ADMIN_EMAILS` environment variable (see below) —
+  admins get an "Admin" panel on each crisp's page to edit its name/brand/
+  country or delete it (and its reviews) entirely. Everyone else can't.
 
 ## Useful scripts
 
@@ -72,6 +75,12 @@ once you connect a [Vercel Blob](https://vercel.com/storage/blob) store to
 the project (Storage → Create Database → Blob → Connect). Without it, crisp
 photo uploads fail with a friendly error but the rest of the app keeps
 working.
+
+To make yourself (or anyone) an admin, add an `ADMIN_EMAILS` environment
+variable with their registered email (comma-separate for more than one) and
+redeploy — the seed step re-applies it on every deploy, so it's safe to leave
+set permanently. An email with no matching account yet is just skipped until
+that person registers.
 
 Set the project's **Build Command** (Project Settings → Build & Development
 Settings) to:

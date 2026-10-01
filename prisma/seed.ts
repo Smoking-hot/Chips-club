@@ -62,6 +62,37 @@ async function seedEstrellaChips() {
   console.log(`Seeded ${ESTRELLA_CHIPS.length} Estrella crisps into the listing.`);
 }
 
+async function grantAdmins() {
+  const adminEmails = (process.env.ADMIN_EMAILS ?? "")
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+
+  if (adminEmails.length === 0) return;
+
+  const result = await prisma.user.updateMany({
+    where: { email: { in: adminEmails } },
+    data: { isAdmin: true },
+  });
+
+  if (result.count > 0) {
+    console.log(`Granted admin to ${result.count} user(s) listed in ADMIN_EMAILS.`);
+  }
+
+  const matchedEmails = await prisma.user.findMany({
+    where: { email: { in: adminEmails } },
+    select: { email: true },
+  });
+  const matched = new Set(matchedEmails.map((u) => u.email));
+  for (const email of adminEmails) {
+    if (!matched.has(email)) {
+      console.log(
+        `ADMIN_EMAILS lists "${email}", but no account with that email exists yet — they'll need to register first.`
+      );
+    }
+  }
+}
+
 async function seedBootstrapInvite() {
   const realMemberCount = await prisma.user.count({
     where: { email: { not: CATALOGUE_USER_EMAIL } },
@@ -89,6 +120,7 @@ async function seedBootstrapInvite() {
 
 async function main() {
   await seedEstrellaChips();
+  await grantAdmins();
   await seedBootstrapInvite();
 }
 

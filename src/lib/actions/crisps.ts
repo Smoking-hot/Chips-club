@@ -157,6 +157,80 @@ export async function setCrispImageAction(
   return {};
 }
 
+const editCrispSchema = z.object({
+  crispId: z.string().min(1),
+  name: z.string().trim().min(1, "Name is required").max(120),
+  brand: z.string().trim().min(1, "Brand is required").max(120),
+  country: z.string().trim().refine(isCountry, "Choose a country from the list"),
+});
+
+export async function updateCrispAction(
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const user = await getCurrentUser();
+  if (!user?.isAdmin) {
+    return { error: "Only admins can edit crisps" };
+  }
+
+  const parsed = editCrispSchema.safeParse({
+    crispId: formData.get("crispId"),
+    name: formData.get("name"),
+    brand: formData.get("brand"),
+    country: formData.get("country"),
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+
+  const { crispId, name, brand, country } = parsed.data;
+
+  const conflict = await prisma.crisp.findUnique({
+    where: { name_brand: { name, brand } },
+  });
+  if (conflict && conflict.id !== crispId) {
+    return { error: "Another crisp already has that name and brand" };
+  }
+
+  try {
+    await prisma.crisp.update({ where: { id: crispId }, data: { name, brand, country } });
+  } catch (error) {
+    console.error("Failed to update crisp:", error);
+    return { error: "Could not save changes. Try again." };
+  }
+
+  revalidatePath(`/crisps/${crispId}`);
+  revalidatePath("/");
+  return {};
+}
+
+export async function deleteCrispAction(formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user?.isAdmin) {
+    return;
+  }
+
+  const crispId = formData.get("crispId");
+  if (typeof crispId !== "string" || !crispId) {
+    return;
+  }
+
+  const crisp = await prisma.crisp.findUnique({ where: { id: crispId } });
+  if (!crisp) {
+    redirect("/");
+  }
+
+  await prisma.crisp.delete({ where: { id: crispId } });
+
+  if (crisp.imageUrl) {
+    await deleteCrispImage(crisp.imageUrl);
+  }
+
+  revalidatePath("/");
+  redirect("/");
+}
+
 const reviewSchema = z.object({
   crispId: z.string().min(1),
   rating: z.coerce.number().int().min(1, "Rating must be 1-5").max(5, "Rating must be 1-5"),

@@ -5,6 +5,7 @@ import StarRating from "@/components/StarRating";
 import ReviewForm from "@/components/ReviewForm";
 import CrispImage from "@/components/CrispImage";
 import CrispImageForm from "@/components/CrispImageForm";
+import AdminCrispControls from "@/components/AdminCrispControls";
 
 // Photo uploads (via setCrispImageAction/upsertReviewAction on this page) can
 // take a few seconds on a real photo — raise the Server Action timeout above
@@ -75,6 +76,17 @@ export default async function CrispPage({ params }: PageProps<"/crisps/[id]">) {
           )}
         </div>
       </div>
+
+      {user?.isAdmin && (
+        <AdminCrispControls
+          crisp={{
+            id: crisp.id,
+            name: crisp.name,
+            brand: crisp.brand,
+            country: crisp.country,
+          }}
+        />
+      )}
 
       <section className="rounded-lg border border-card-border bg-card p-4">
         <h2 className="font-semibold mb-3">
