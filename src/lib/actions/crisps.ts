@@ -5,7 +5,13 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
-import { CrispImageError, deleteCrispImage, uploadCrispImage } from "@/lib/crisp-image";
+import {
+  CrispImageError,
+  deleteCrispImage,
+  uploadCrispImage,
+  uploadCrispImageFromUrl,
+} from "@/lib/crisp-image";
+import { isCountry } from "@/lib/countries";
 import type { ActionState } from "@/lib/actions/auth";
 
 function getOptionalImage(formData: FormData): File | null {
@@ -16,7 +22,7 @@ function getOptionalImage(formData: FormData): File | null {
 const crispSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(120),
   brand: z.string().trim().min(1, "Brand is required").max(120),
-  country: z.string().trim().min(1, "Country is required").max(80),
+  country: z.string().trim().refine(isCountry, "Choose a country from the list"),
   rating: z.coerce.number().int().min(1, "Rating must be 1-5").max(5, "Rating must be 1-5"),
   tastingNotes: z.string().trim().min(1, "Tasting notes are required").max(2000),
 });
@@ -52,16 +58,22 @@ export async function createCrispAction(
   }
 
   const image = getOptionalImage(formData);
+  const scannedImageUrlRaw = formData.get("scannedImageUrl");
+  const scannedImageUrl =
+    typeof scannedImageUrlRaw === "string" && scannedImageUrlRaw ? scannedImageUrlRaw : null;
+
   let imageUrl: string | undefined;
-  if (image) {
-    try {
+  try {
+    if (image) {
       imageUrl = await uploadCrispImage(image);
-    } catch (error) {
-      if (error instanceof CrispImageError) {
-        return { error: error.message };
-      }
-      throw error;
+    } else if (scannedImageUrl) {
+      imageUrl = await uploadCrispImageFromUrl(scannedImageUrl);
     }
+  } catch (error) {
+    if (error instanceof CrispImageError) {
+      return { error: error.message };
+    }
+    throw error;
   }
 
   let crisp;

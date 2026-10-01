@@ -3,6 +3,7 @@
 import { useActionState, useRef, useState } from "react";
 import { createCrispAction } from "@/lib/actions/crisps";
 import { lookupBarcodeAction } from "@/lib/actions/barcode";
+import { COUNTRIES } from "@/lib/countries";
 import RatingInput from "@/components/RatingInput";
 import SubmitButton from "@/components/SubmitButton";
 import BarcodeScanner from "@/components/BarcodeScanner";
@@ -13,6 +14,7 @@ export default function CrispForm() {
   const [name, setName] = useState("");
   const [brand, setBrand] = useState("");
   const [country, setCountry] = useState("");
+  const [scannedImageUrl, setScannedImageUrl] = useState<string | null>(null);
 
   const [scanning, setScanning] = useState(false);
   const [lookingUp, setLookingUp] = useState(false);
@@ -36,9 +38,12 @@ export default function CrispForm() {
       setName(result.name);
       setBrand(result.brand);
       if (result.country) setCountry(result.country);
+      setScannedImageUrl(result.previewImageUrl);
       setScanStatus({
         type: "info",
-        message: "Filled in from Open Food Facts — check it over before saving.",
+        message: result.country
+          ? "Filled in from Open Food Facts — check it over before saving."
+          : "Filled in from Open Food Facts, but the country wasn't recognized — pick it from the list below.",
       });
     } else {
       setScanStatus({ type: "error", message: result.error });
@@ -135,27 +140,66 @@ export default function CrispForm() {
           <label htmlFor="country" className="block text-sm font-medium mb-1">
             Country
           </label>
-          <input
+          <select
             id="country"
             name="country"
-            type="text"
             required
             value={country}
             onChange={(e) => setCountry(e.target.value)}
-            placeholder="Sweden"
             className="w-full rounded-md border border-card-border bg-card px-3 py-2"
-          />
+          >
+            <option value="" disabled>
+              Select a country…
+            </option>
+            {COUNTRIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
+
+      {scannedImageUrl && (
+        <div>
+          <span className="block text-sm font-medium mb-1">
+            Photo from Open Food Facts
+          </span>
+          <div className="flex items-center gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element -- external
+                preview only; the actual crisp photo is re-hosted on submit */}
+            <img
+              src={scannedImageUrl}
+              alt=""
+              className="h-20 w-20 rounded-md border border-card-border object-cover"
+            />
+            <button
+              type="button"
+              onClick={() => setScannedImageUrl(null)}
+              className="text-sm text-muted hover:text-foreground underline"
+            >
+              Remove
+            </button>
+          </div>
+          <input type="hidden" name="scannedImageUrl" value={scannedImageUrl} />
+        </div>
+      )}
+
       <div>
         <label htmlFor="image" className="block text-sm font-medium mb-1">
-          Photo <span className="text-muted font-normal">(optional)</span>
+          {scannedImageUrl ? "Use a different photo instead" : "Photo"}{" "}
+          <span className="text-muted font-normal">(optional)</span>
         </label>
         <input
           id="image"
           name="image"
           type="file"
           accept="image/jpeg,image/png,image/webp,image/gif"
+          onChange={(e) => {
+            if (e.target.files && e.target.files.length > 0) {
+              setScannedImageUrl(null);
+            }
+          }}
           className="w-full rounded-md border border-card-border bg-card px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-brand-soft file:px-3 file:py-1.5 file:text-sm"
         />
       </div>

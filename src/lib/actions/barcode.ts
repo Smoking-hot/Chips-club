@@ -1,7 +1,17 @@
 "use server";
 
+import { matchCountry } from "@/lib/countries";
+
 export type BarcodeLookupResult =
-  | { found: true; name: string; brand: string; country: string }
+  | {
+      found: true;
+      name: string;
+      brand: string;
+      country: string;
+      /** Open Food Facts' own image URL — only for previewing before save;
+       * the crisp form re-hosts it in our own storage on submit. */
+      previewImageUrl: string | null;
+    }
   | { found: false; error: string };
 
 type OpenFoodFactsProduct = {
@@ -9,6 +19,8 @@ type OpenFoodFactsProduct = {
   product_name_sv?: string;
   brands?: string;
   countries?: string;
+  image_front_url?: string;
+  image_url?: string;
 };
 
 type OpenFoodFactsResponse = {
@@ -31,7 +43,7 @@ export async function lookupBarcodeAction(
 
   const url = `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(
     code
-  )}.json?fields=product_name,product_name_sv,brands,countries`;
+  )}.json?fields=product_name,product_name_sv,brands,countries,image_front_url,image_url`;
 
   let response: Response;
   try {
@@ -66,7 +78,10 @@ export async function lookupBarcodeAction(
 
   const name = data.product.product_name_sv || data.product.product_name || "";
   const brand = firstOf(data.product.brands);
-  const country = firstOf(data.product.countries);
+  const rawCountry = firstOf(data.product.countries);
+  const country = matchCountry(rawCountry) ?? "";
+  const previewImageUrl =
+    data.product.image_front_url || data.product.image_url || null;
 
   if (!name && !brand) {
     return {
@@ -75,5 +90,5 @@ export async function lookupBarcodeAction(
     };
   }
 
-  return { found: true, name, brand, country };
+  return { found: true, name, brand, country, previewImageUrl };
 }
