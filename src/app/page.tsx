@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import StarRating from "@/components/StarRating";
 import CrispImage from "@/components/CrispImage";
@@ -6,25 +7,39 @@ import CrispImage from "@/components/CrispImage";
 export default async function HomePage({
   searchParams,
 }: PageProps<"/">) {
-  const { q } = await searchParams;
+  const { q, country: countryParam } = await searchParams;
   const query = typeof q === "string" ? q.trim() : "";
+  const country = typeof countryParam === "string" ? countryParam.trim() : "";
 
-  const crisps = await prisma.crisp.findMany({
-    where: query
-      ? {
-          OR: [
-            { name: { contains: query } },
-            { brand: { contains: query } },
-            { country: { contains: query } },
-          ],
-        }
-      : undefined,
-    include: {
-      reviews: { select: { rating: true } },
-      createdBy: { select: { name: true } },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  const where: Prisma.CrispWhereInput = {};
+  if (query) {
+    where.OR = [
+      { name: { contains: query } },
+      { brand: { contains: query } },
+      { country: { contains: query } },
+    ];
+  }
+  if (country) {
+    where.country = country;
+  }
+
+  const [crisps, countryCounts] = await Promise.all([
+    prisma.crisp.findMany({
+      where,
+      include: {
+        reviews: { select: { rating: true } },
+        createdBy: { select: { name: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.crisp.groupBy({
+      by: ["country"],
+      _count: { _all: true },
+      orderBy: { country: "asc" },
+    }),
+  ]);
+
+  const hasFilters = Boolean(query || country);
 
   return (
     <div className="space-y-6">
@@ -32,34 +47,66 @@ export default async function HomePage({
         <div>
           <h1 className="text-2xl font-bold">The crisp listing</h1>
           <p className="text-muted text-sm mt-1">
-            {crisps.length} crisp{crisps.length === 1 ? "" : "s"} logged by
-            the club.
+            {crisps.length} crisp{crisps.length === 1 ? "" : "s"}
+            {country ? ` from ${country}` : ""} logged by the club.
           </p>
         </div>
-        <form className="flex gap-2">
+        <form className="flex flex-wrap gap-2">
           <input
             type="search"
             name="q"
             defaultValue={query}
             placeholder="Search name, brand, country…"
-            className="rounded-md border border-card-border bg-card px-3 py-2 text-sm w-full sm:w-64"
+            className="rounded-md border border-card-border bg-card px-3 py-2 text-sm w-full sm:w-56"
           />
+          <select
+            name="country"
+            defaultValue={country}
+            className="rounded-md border border-card-border bg-card px-3 py-2 text-sm"
+          >
+            <option value="">All countries</option>
+            {countryCounts.map((c) => (
+              <option key={c.country} value={c.country}>
+                {c.country} ({c._count._all})
+              </option>
+            ))}
+          </select>
           <button
             type="submit"
             className="rounded-md border border-card-border px-3 py-2 text-sm hover:bg-brand-soft"
           >
-            Search
+            Filter
           </button>
+          {hasFilters && (
+            <Link
+              href="/"
+              className="rounded-md border border-card-border px-3 py-2 text-sm hover:bg-brand-soft"
+            >
+              Clear
+            </Link>
+          )}
         </form>
       </div>
 
       {crisps.length === 0 ? (
         <p className="text-muted">
-          No crisps here yet.{" "}
-          <Link href="/crisps/new" className="text-brand underline">
-            Add the first one
-          </Link>
-          .
+          {hasFilters ? (
+            <>
+              No crisps match that filter.{" "}
+              <Link href="/" className="text-brand underline">
+                Clear filters
+              </Link>
+              .
+            </>
+          ) : (
+            <>
+              No crisps here yet.{" "}
+              <Link href="/crisps/new" className="text-brand underline">
+                Add the first one
+              </Link>
+              .
+            </>
+          )}
         </p>
       ) : (
         <ul className="grid sm:grid-cols-2 gap-4">
