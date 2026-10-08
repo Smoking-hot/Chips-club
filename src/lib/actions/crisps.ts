@@ -11,7 +11,7 @@ import {
   uploadCrispImage,
   uploadCrispImageFromUrl,
 } from "@/lib/crisp-image";
-import { isCountry } from "@/lib/countries";
+import { isCountry, matchCountry } from "@/lib/countries";
 import type { ActionState } from "@/lib/actions/auth";
 
 function getOptionalImage(formData: FormData): File | null {
@@ -19,10 +19,20 @@ function getOptionalImage(formData: FormData): File | null {
   return file instanceof File && file.size > 0 ? file : null;
 }
 
+// Validates case-insensitively (so a pre-existing "sweden" still passes)
+// but always normalizes to the canonical casing, so whatever gets saved
+// exactly matches a COUNTRIES entry — never a stray value a <select>
+// would silently fail to show as selected.
+const countryField = z
+  .string()
+  .trim()
+  .refine(isCountry, "Choose a country from the list")
+  .transform((value) => matchCountry(value)!);
+
 const crispSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(120),
   brand: z.string().trim().min(1, "Brand is required").max(120),
-  country: z.string().trim().refine(isCountry, "Choose a country from the list"),
+  country: countryField,
   rating: z.coerce.number().int().min(1, "Rating must be 1-5").max(5, "Rating must be 1-5"),
   tastingNotes: z.string().trim().min(1, "Tasting notes are required").max(2000),
 });
@@ -161,7 +171,7 @@ const editCrispSchema = z.object({
   crispId: z.string().min(1),
   name: z.string().trim().min(1, "Name is required").max(120),
   brand: z.string().trim().min(1, "Brand is required").max(120),
-  country: z.string().trim().refine(isCountry, "Choose a country from the list"),
+  country: countryField,
 });
 
 export async function updateCrispAction(

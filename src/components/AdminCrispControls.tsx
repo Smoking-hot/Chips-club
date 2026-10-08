@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { updateCrispAction, deleteCrispAction } from "@/lib/actions/crisps";
-import { COUNTRIES } from "@/lib/countries";
+import { COUNTRIES, matchCountry } from "@/lib/countries";
 import SubmitButton from "@/components/SubmitButton";
 
 export default function AdminCrispControls({
@@ -13,6 +13,13 @@ export default function AdminCrispControls({
   const [editing, setEditing] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [updateState, updateAction] = useActionState(updateCrispAction, undefined);
+
+  // A crisp added before the country field became a dropdown can have a
+  // stored value that isn't an exact (case-sensitive) match for any option
+  // — e.g. "sweden". A <select> silently falls back to its first option in
+  // that case, so match it case-insensitively and surface an unmatched
+  // value explicitly instead of quietly defaulting to "Afghanistan".
+  const matchedCountry = matchCountry(crisp.country);
 
   return (
     <section className="rounded-lg border border-card-border bg-card p-4 space-y-3">
@@ -72,9 +79,14 @@ export default function AdminCrispControls({
                 id="edit-country"
                 name="country"
                 required
-                defaultValue={crisp.country}
+                defaultValue={matchedCountry ?? crisp.country}
                 className="w-full rounded-md border border-card-border bg-card px-3 py-2"
               >
+                {!matchedCountry && (
+                  <option value={crisp.country}>
+                    {crisp.country} (not in list — please pick one below)
+                  </option>
+                )}
                 {COUNTRIES.map((c) => (
                   <option key={c} value={c}>
                     {c}
