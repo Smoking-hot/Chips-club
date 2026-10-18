@@ -3,11 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import StarRating from "@/components/StarRating";
 import ReviewForm from "@/components/ReviewForm";
-import CrispImage from "@/components/CrispImage";
-import CrispImageForm from "@/components/CrispImageForm";
-import AdminCrispControls from "@/components/AdminCrispControls";
+import CrispPhotos from "@/components/CrispPhotos";
+import CrispControls from "@/components/CrispControls";
 
-// Photo uploads (via setCrispImageAction/upsertReviewAction on this page) can
+// Photo uploads (via addCrispPhotoAction on this page) can
 // take a few seconds on a real photo — raise the Server Action timeout above
 // Next.js's default so a normal upload never gets cut off mid-request.
 export const maxDuration = 30;
@@ -20,6 +19,7 @@ export default async function CrispPage({ params }: PageProps<"/crisps/[id]">) {
       where: { id },
       include: {
         createdBy: { select: { name: true } },
+        photos: { select: { id: true, url: true }, orderBy: { createdAt: "asc" } },
         reviews: {
           include: { user: { select: { id: true, name: true } } },
           orderBy: { createdAt: "desc" },
@@ -47,7 +47,12 @@ export default async function CrispPage({ params }: PageProps<"/crisps/[id]">) {
   return (
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row gap-4">
-        <CrispImage src={crisp.imageUrl} alt={crisp.name} size="large" />
+        <CrispPhotos
+          crispId={crisp.id}
+          crispName={crisp.name}
+          photos={crisp.photos}
+          canEdit={Boolean(user)}
+        />
         <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-bold">{crisp.name}</h1>
           <p className="text-muted mt-1">
@@ -69,16 +74,12 @@ export default async function CrispPage({ params }: PageProps<"/crisps/[id]">) {
           <p className="text-xs text-muted mt-2">
             Added by {crisp.createdBy.name}
           </p>
-          {user && (
-            <div className="mt-3">
-              <CrispImageForm crispId={crisp.id} hasImage={Boolean(crisp.imageUrl)} />
-            </div>
-          )}
         </div>
       </div>
 
-      {user?.isAdmin && (
-        <AdminCrispControls
+      {user && (
+        <CrispControls
+          canDelete={user.isAdmin}
           crisp={{
             id: crisp.id,
             name: crisp.name,

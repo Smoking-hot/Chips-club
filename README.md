@@ -47,13 +47,15 @@ seed script printed to create the first account. Once logged in, visit
   rating and tasting notes to a crisp — including ones added by other
   members. Each member has exactly one review per crisp; submitting again
   updates their existing review rather than creating a duplicate.
-- **Photos.** A crisp can have a photo, shown as a thumbnail in the listing
-  and larger on its own page. It's optional when adding a new crisp, and any
-  member can add or replace it later from the crisp's page. Photos are
-  stored in [Vercel Blob](https://vercel.com/storage/blob).
+- **Photos.** A crisp can have up to five photos. The first one is shown as
+  the thumbnail in the listing, and all of them can be browsed on the crisp's
+  own page. One photo can be added (or scanned) when adding a new crisp; any
+  member can add more or remove photos later from the crisp's page. Photos
+  are stored in [Vercel Blob](https://vercel.com/storage/blob).
+- **Editing.** Any member can edit a crisp's name, brand and country from
+  its page.
 - **Admins.** Set via the `ADMIN_EMAILS` environment variable (see below) —
-  admins get an "Admin" panel on each crisp's page to edit its name/brand/
-  country or delete it (and its reviews) entirely. Everyone else can't.
+  only admins can delete a crisp (along with everyone's reviews on it).
 
 ## Useful scripts
 

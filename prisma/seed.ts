@@ -62,6 +62,28 @@ async function seedEstrellaChips() {
   console.log(`Seeded ${ESTRELLA_CHIPS.length} Estrella crisps into the listing.`);
 }
 
+// Crisps used to have a single `imageUrl`; they now have up to five photos.
+// Move any leftover single photo into the photos table so it isn't lost.
+async function migrateLegacyImages() {
+  const crisps = await prisma.crisp.findMany({
+    where: { imageUrl: { not: null } },
+    select: { id: true, imageUrl: true, createdAt: true },
+  });
+
+  for (const crisp of crisps) {
+    await prisma.$transaction([
+      prisma.crispPhoto.create({
+        data: { crispId: crisp.id, url: crisp.imageUrl!, createdAt: crisp.createdAt },
+      }),
+      prisma.crisp.update({ where: { id: crisp.id }, data: { imageUrl: null } }),
+    ]);
+  }
+
+  if (crisps.length > 0) {
+    console.log(`Moved ${crisps.length} legacy crisp photo(s) into the photos table.`);
+  }
+}
+
 async function grantAdmins() {
   const adminEmails = (process.env.ADMIN_EMAILS ?? "")
     .split(",")
@@ -120,6 +142,7 @@ async function seedBootstrapInvite() {
 
 async function main() {
   await seedEstrellaChips();
+  await migrateLegacyImages();
   await grantAdmins();
   await seedBootstrapInvite();
 }

@@ -39,15 +39,29 @@ model Crisp {
   name        String
   brand       String
   country     String
+  // Legacy single photo, from before crisps could have several. The seed
+  // script moves any value here into `photos` and clears it on each deploy.
   imageUrl    String?
   createdById String
   createdBy   User     @relation(fields: [createdById], references: [id])
   createdAt   DateTime @default(now())
 
   reviews Review[]
+  photos  CrispPhoto[]
 
   @@unique([name, brand])
   @@map("crisps")
+}
+
+model CrispPhoto {
+  id        String   @id @default(cuid())
+  crispId   String
+  crisp     Crisp    @relation(fields: [crispId], references: [id], onDelete: Cascade)
+  url       String
+  createdAt DateTime @default(now())
+
+  @@index([crispId])
+  @@map("crisp_photos")
 }
 
 model Review {

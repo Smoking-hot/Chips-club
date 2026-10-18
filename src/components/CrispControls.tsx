@@ -5,10 +5,12 @@ import { updateCrispAction, deleteCrispAction } from "@/lib/actions/crisps";
 import { COUNTRIES, matchCountry } from "@/lib/countries";
 import SubmitButton from "@/components/SubmitButton";
 
-export default function AdminCrispControls({
+export default function CrispControls({
   crisp,
+  canDelete,
 }: {
   crisp: { id: string; name: string; brand: string; country: string };
+  canDelete: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -25,7 +27,7 @@ export default function AdminCrispControls({
     <section className="rounded-lg border border-card-border bg-card p-4 space-y-3">
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold uppercase tracking-wide text-muted">
-          Admin
+          Crisp details
         </span>
         <button
           type="button"
@@ -99,39 +101,41 @@ export default function AdminCrispControls({
         </form>
       )}
 
-      <div className="pt-2 border-t border-card-border">
-        {confirmingDelete ? (
-          <div className="flex flex-wrap items-center gap-3 text-sm">
-            <span>Delete this crisp and everyone&apos;s reviews on it?</span>
-            <div className="flex gap-2">
-              <form action={deleteCrispAction}>
-                <input type="hidden" name="crispId" value={crisp.id} />
+      {canDelete && (
+        <div className="pt-2 border-t border-card-border">
+          {confirmingDelete ? (
+            <div className="flex flex-wrap items-center gap-3 text-sm">
+              <span>Delete this crisp and everyone&apos;s reviews on it?</span>
+              <div className="flex gap-2">
+                <form action={deleteCrispAction}>
+                  <input type="hidden" name="crispId" value={crisp.id} />
+                  <button
+                    type="submit"
+                    className="rounded-md bg-red-600 text-white px-3 py-1.5 font-medium hover:bg-red-700"
+                  >
+                    Yes, delete
+                  </button>
+                </form>
                 <button
-                  type="submit"
-                  className="rounded-md bg-red-600 text-white px-3 py-1.5 font-medium hover:bg-red-700"
+                  type="button"
+                  onClick={() => setConfirmingDelete(false)}
+                  className="rounded-md border border-card-border px-3 py-1.5 hover:bg-brand-soft"
                 >
-                  Yes, delete
+                  Cancel
                 </button>
-              </form>
-              <button
-                type="button"
-                onClick={() => setConfirmingDelete(false)}
-                className="rounded-md border border-card-border px-3 py-1.5 hover:bg-brand-soft"
-              >
-                Cancel
-              </button>
+              </div>
             </div>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setConfirmingDelete(true)}
-            className="text-sm text-red-700 hover:underline"
-          >
-            Delete crisp
-          </button>
-        )}
-      </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmingDelete(true)}
+              className="text-sm text-red-700 hover:underline"
+            >
+              Delete crisp
+            </button>
+          )}
+        </div>
+      )}
     </section>
   );
 }

@@ -29,6 +29,7 @@ export default async function HomePage({
       include: {
         reviews: { select: { rating: true } },
         createdBy: { select: { name: true } },
+        photos: { select: { url: true }, orderBy: { createdAt: "asc" }, take: 1 },
       },
       orderBy: { createdAt: "desc" },
     }),
@@ -123,7 +124,7 @@ export default async function HomePage({
                   href={`/crisps/${crisp.id}`}
                   className="flex h-full gap-3 rounded-lg border border-card-border bg-card p-4 hover:border-brand transition-colors"
                 >
-                  <CrispImage src={crisp.imageUrl} alt={crisp.name} size="thumb" />
+                  <CrispImage src={crisp.photos[0]?.url ?? null} alt={crisp.name} size="thumb" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">

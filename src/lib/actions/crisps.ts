@@ -12,6 +12,7 @@ import {
   uploadCrispImageFromUrl,
 } from "@/lib/crisp-image";
 import { isCountry, matchCountry } from "@/lib/countries";
+import { MAX_PHOTOS_PER_CRISP } from "@/lib/photo-limits";
 import type { ActionState } from "@/lib/actions/auth";
 
 function getOptionalImage(formData: FormData): File | null {
@@ -93,8 +94,8 @@ export async function createCrispAction(
         name,
         brand,
         country,
-        imageUrl,
         createdById: user.id,
+        photos: imageUrl ? { create: { url: imageUrl } } : undefined,
         reviews: {
           create: {
             userId: user.id,
@@ -116,7 +117,7 @@ export async function createCrispAction(
   redirect(`/crisps/${crisp.id}`);
 }
 
-export async function setCrispImageAction(
+export async function addCrispPhotoAction(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
@@ -135,9 +136,15 @@ export async function setCrispImageAction(
     return { error: "Choose an image first" };
   }
 
-  const crisp = await prisma.crisp.findUnique({ where: { id: crispId } });
+  const crisp = await prisma.crisp.findUnique({
+    where: { id: crispId },
+    select: { _count: { select: { photos: true } } },
+  });
   if (!crisp) {
     return { error: "That crisp no longer exists" };
+  }
+  if (crisp._count.photos >= MAX_PHOTOS_PER_CRISP) {
+    return { error: `A crisp can have at most ${MAX_PHOTOS_PER_CRISP} photos` };
   }
 
   let imageUrl: string;
@@ -151,18 +158,41 @@ export async function setCrispImageAction(
   }
 
   try {
-    await prisma.crisp.update({ where: { id: crispId }, data: { imageUrl } });
+    await prisma.crispPhoto.create({ data: { crispId, url: imageUrl } });
   } catch (error) {
-    console.error("Failed to save crisp image URL:", error);
+    console.error("Failed to save crisp photo:", error);
     await deleteCrispImage(imageUrl);
     return { error: "Bilden laddades upp men kunde inte sparas. Försök igen." };
   }
 
-  if (crisp.imageUrl) {
-    await deleteCrispImage(crisp.imageUrl);
+  revalidatePath(`/crisps/${crispId}`);
+  revalidatePath("/");
+  return {};
+}
+
+export async function deleteCrispPhotoAction(
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { error: "You must be signed in to remove a photo" };
   }
 
-  revalidatePath(`/crisps/${crispId}`);
+  const photoId = formData.get("photoId");
+  if (typeof photoId !== "string" || !photoId) {
+    return { error: "Invalid photo" };
+  }
+
+  const photo = await prisma.crispPhoto.findUnique({ where: { id: photoId } });
+  if (!photo) {
+    return {};
+  }
+
+  await prisma.crispPhoto.delete({ where: { id: photoId } });
+  await deleteCrispImage(photo.url);
+
+  revalidatePath(`/crisps/${photo.crispId}`);
   revalidatePath("/");
   return {};
 }
@@ -179,8 +209,8 @@ export async function updateCrispAction(
   formData: FormData
 ): Promise<ActionState> {
   const user = await getCurrentUser();
-  if (!user?.isAdmin) {
-    return { error: "Only admins can edit crisps" };
+  if (!user) {
+    return { error: "You must be signed in to edit a crisp" };
   }
 
   const parsed = editCrispSchema.safeParse({
@@ -226,16 +256,17 @@ export async function deleteCrispAction(formData: FormData) {
     return;
   }
 
-  const crisp = await prisma.crisp.findUnique({ where: { id: crispId } });
+  const crisp = await prisma.crisp.findUnique({
+    where: { id: crispId },
+    include: { photos: { select: { url: true } } },
+  });
   if (!crisp) {
     redirect("/");
   }
 
   await prisma.crisp.delete({ where: { id: crispId } });
 
-  if (crisp.imageUrl) {
-    await deleteCrispImage(crisp.imageUrl);
-  }
+  await Promise.all(crisp.photos.map((photo) => deleteCrispImage(photo.url)));
 
   revalidatePath("/");
   redirect("/");
