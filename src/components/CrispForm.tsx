@@ -15,6 +15,9 @@ export default function CrispForm() {
   const [brand, setBrand] = useState("");
   const [country, setCountry] = useState("");
   const [scannedImageUrl, setScannedImageUrl] = useState<string | null>(null);
+  const [tastingNotes, setTastingNotes] = useState("");
+  const [ratingError, setRatingError] = useState<string | null>(null);
+  const error = ratingError ?? state?.error;
 
   const [scanning, setScanning] = useState(false);
   const [lookingUp, setLookingUp] = useState(false);
@@ -57,10 +60,24 @@ export default function CrispForm() {
   }
 
   return (
-    <form action={formAction} className="space-y-4">
-      {state?.error && (
+    <form
+      action={formAction}
+      onSubmit={(e) => {
+        // Checked here so a missing rating doesn't round-trip to the server,
+        // where React's post-submit form reset would also clear the photo pick.
+        const rating = new FormData(e.currentTarget).get("rating");
+        if (!rating || rating === "0") {
+          e.preventDefault();
+          setRatingError("Pick a rating from 1 to 5 stars");
+        } else {
+          setRatingError(null);
+        }
+      }}
+      className="space-y-4"
+    >
+      {error && (
         <p className="rounded-md bg-red-50 text-red-700 px-3 py-2 text-sm">
-          {state.error}
+          {error}
         </p>
       )}
 
@@ -216,6 +233,8 @@ export default function CrispForm() {
           name="tastingNotes"
           required
           rows={4}
+          value={tastingNotes}
+          onChange={(e) => setTastingNotes(e.target.value)}
           placeholder="Sharp vinegar tang, good crunch, a little too salty at the bottom of the bag."
           className="w-full rounded-md border border-card-border bg-card px-3 py-2"
         />
