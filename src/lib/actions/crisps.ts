@@ -12,6 +12,7 @@ import {
   uploadCrispImageFromUrl,
 } from "@/lib/crisp-image";
 import { isCountry, matchCountry } from "@/lib/countries";
+import { lookupBarcode } from "@/lib/open-food-facts";
 import { MAX_PHOTOS_PER_CRISP } from "@/lib/photo-limits";
 import type { ActionState } from "@/lib/actions/auth";
 
@@ -243,6 +244,80 @@ export async function updateCrispAction(
   revalidatePath(`/crisps/${crispId}`);
   revalidatePath("/");
   return {};
+}
+
+export type BarcodeUpdateState = { error?: string; message?: string } | undefined;
+
+/** Looks a barcode up on Open Food Facts and overwrites an existing crisp's
+ * name, brand and country with what it finds, adding its product photo too
+ * if the crisp has room for one. */
+export async function updateCrispFromBarcodeAction(
+  crispId: string,
+  barcode: string
+): Promise<BarcodeUpdateState> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { error: "You must be signed in to edit a crisp" };
+  }
+
+  const crisp = await prisma.crisp.findUnique({
+    where: { id: crispId },
+    include: { _count: { select: { photos: true } } },
+  });
+  if (!crisp) {
+    return { error: "That crisp no longer exists" };
+  }
+
+  const result = await lookupBarcode(barcode);
+  if (!result.found) {
+    return { error: result.error };
+  }
+
+  const name = result.name.slice(0, 120) || crisp.name;
+  const brand = result.brand.slice(0, 120) || crisp.brand;
+  const country = result.country || crisp.country;
+
+  const conflict = await prisma.crisp.findUnique({
+    where: { name_brand: { name, brand } },
+  });
+  if (conflict && conflict.id !== crispId) {
+    return {
+      error: `"${name}" by ${brand} is already in the listing as another crisp`,
+    };
+  }
+
+  await prisma.crisp.update({ where: { id: crispId }, data: { name, brand, country } });
+
+  const notes: string[] = [];
+  if (!result.country) {
+    notes.push("the country wasn't recognized, so it was left as it was");
+  }
+  if (result.previewImageUrl) {
+    if (crisp._count.photos >= MAX_PHOTOS_PER_CRISP) {
+      notes.push(`the product photo wasn't added — this crisp already has ${MAX_PHOTOS_PER_CRISP} photos`);
+    } else {
+      let url: string | null = null;
+      try {
+        url = await uploadCrispImageFromUrl(result.previewImageUrl);
+        await prisma.crispPhoto.create({ data: { crispId, url } });
+        notes.push("the product photo was added");
+      } catch (error) {
+        if (!(error instanceof CrispImageError)) {
+          console.error("Failed to add product photo:", error);
+          if (url) await deleteCrispImage(url);
+        }
+        notes.push("the product photo couldn't be added");
+      }
+    }
+  } else {
+    notes.push("Open Food Facts has no photo of it");
+  }
+
+  revalidatePath(`/crisps/${crispId}`);
+  revalidatePath("/");
+  return {
+    message: `Updated from Open Food Facts${notes.length ? ` — ${notes.join("; ")}` : ""}.`,
+  };
 }
 
 export async function deleteCrispAction(formData: FormData) {
